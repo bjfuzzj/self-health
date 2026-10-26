@@ -1,0 +1,12 @@
+# 个人记录、原图和备份
+/data/
+/.workbuddy/
+/.env
+/.env.*
+/dist/
+__pycache__/
+*.py[cod]
+*.tmp
+.DS_Store
+Thumbs.db
+*.log

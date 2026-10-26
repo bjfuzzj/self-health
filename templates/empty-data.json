@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "meta": {"revision": 0},
+  "profile": {"goal": {"type": "record_only"}, "targets": {}},
+  "sources": {"scale": {"status": "pending"}, "band": {"status": "pending"}, "conversation": {"status": "active"}},
+  "bodyMetrics": [], "dailyActivity": [], "meals": [], "workouts": [],
+  "supplements": [], "journal": [], "imports": []
+}
