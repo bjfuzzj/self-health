@@ -151,7 +151,7 @@ a { color: inherit; text-decoration: none; }
 .topbar h1 { font-size: 17px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
 .topbar .crumb { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
 .topbar-spacer { flex: 1; }
-.content { padding: 22px 28px 64px; max-width: 1560px; width: 100%; }
+.content { padding: 22px 28px 64px; width: 100%; }
 
 /* ---------------- 通用组件 ---------------- */
 .card {
