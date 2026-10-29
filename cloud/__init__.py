@@ -2,16 +2,19 @@
 import hashlib
 import io
 import os
+import re
 from pathlib import Path
 import secrets
 import time
+import threading
 from collections import defaultdict, deque
 from flask import Flask, request, session, jsonify, send_from_directory, redirect, g
 from werkzeug.exceptions import HTTPException
 from .db import Database
+from .recognition import VisionProvider, RecognitionError, clean_drafts, image_data
 from .metrics import daily_summary, trend_summary
 from .attachments import create_storage
-from .repository import Repository, Conflict, Missing, digest
+from .repository import Repository, Conflict, Missing, digest, dumps as dumps_safe
 from records import KINDS
 
 ROOT=Path(__file__).resolve().parent.parent
@@ -19,12 +22,14 @@ ROOT=Path(__file__).resolve().parent.parent
 def create_app(config=None):
     app=Flask(__name__,static_folder=None)
     app.config.update(SECRET_KEY=os.environ.get('HEALTH_SECRET_KEY'),DB_HOST=os.environ.get('HEALTH_DB_HOST','127.0.0.1'),DB_PORT=os.environ.get('HEALTH_DB_PORT','3306'),DB_USER=os.environ.get('HEALTH_DB_USER',''),DB_PASSWORD=os.environ.get('HEALTH_DB_PASSWORD',''),DB_NAME=os.environ.get('HEALTH_DB_NAME','health'),ATTACHMENT_DIR=os.environ.get('HEALTH_ATTACHMENT_DIR','/var/lib/self-health/attachments'),MAX_CONTENT_LENGTH=21*1024*1024,SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SECURE=True,SESSION_COOKIE_SAMESITE='Strict',PERMANENT_SESSION_LIFETIME=28800)
-    for key in ('OSS_ENDPOINT','OSS_BUCKET','OSS_ACCESS_KEY_ID','OSS_ACCESS_KEY_SECRET','OSS_KEY_PREFIX'): app.config[key]=os.environ.get('HEALTH_'+key)
+    for key in ('MODEL_BASE_URL','MODEL_API_KEY','MODEL_NAME','OSS_ENDPOINT','OSS_BUCKET','OSS_ACCESS_KEY_ID','OSS_ACCESS_KEY_SECRET','OSS_KEY_PREFIX'): app.config[key]=os.environ.get('HEALTH_'+key)
     if config: app.config.update(config)
     if not app.config['SECRET_KEY']: raise ValueError('必须设置 HEALTH_SECRET_KEY')
     if app.config.get('SQLITE_PATH') and not app.config.get('TESTING'): raise ValueError('SQLite 仅用于隔离测试')
     repository=Repository(Database(app.config)); app.extensions['health_repository']=repository
     attachment_storage=create_storage(app.config,ROOT); app.extensions['health_attachments']=attachment_storage
+    vision=app.config.get('VISION_PROVIDER') or VisionProvider(app.config); app.extensions['health_vision']=vision
+    vision_lock=threading.BoundedSemaphore(1)
     attempts=defaultdict(deque)
     def error(message,status): return jsonify(ok=False,error=message),status
     @app.before_request
@@ -123,6 +128,28 @@ def create_app(config=None):
             records.sort(key=lambda r:(r.get('date',''),r.get('ts','')))
             return {'record':record}
         return jsonify(repository.mutate('add:'+kind,value,mutate))
+    @app.post('/api/v1/records/batch')
+    def record_batch():
+        value=body();drafts=value.get('drafts')
+        if not isinstance(drafts,list) or not 1<=len(drafts)<=6: raise ValueError('请确认1到6条记录')
+        def mutate(snapshot):
+            result=[];identities=set()
+            for draft in drafts:
+                if not isinstance(draft,dict) or draft.get('kind') not in KINDS or not isinstance(draft.get('payload'),dict): raise ValueError('草稿格式无效')
+                kind=draft['kind'];payload={k:v for k,v in draft['payload'].items() if k not in {'id','createdAt','updatedAt','sourceKey'}};payload['source']='h5-ai'
+                record=repository.record(kind,payload);rows=snapshot[KINDS[kind]];previous=None
+                if kind=='activity':
+                    identity=(kind,record['date']);previous=next((r for r in rows if r['date']==record['date']),None)
+                elif kind=='body':
+                    identity=(kind,record['date'],record['source'],record['measureMode']);previous=next((r for r in rows if (r['date'],r.get('source'),r.get('measureMode','fasting'))==identity[1:]),None)
+                else: identity=None
+                if identity and identity in identities: raise ValueError('同一天的相同活动或体测时段请合并后确认')
+                if identity:identities.add(identity)
+                if previous is not None:
+                    record={**previous,**record,'id':previous['id'],'createdAt':previous.get('createdAt',record['createdAt'])};rows.remove(previous)
+                rows.append(record);rows.sort(key=lambda r:(r.get('date',''),r.get('ts','')));result.append({'kind':kind,'record':record})
+            return {'records':result}
+        return jsonify(repository.mutate('confirm-drafts',value,mutate))
     @app.route('/api/v1/records/<kind>/<ident>',methods=['PATCH','DELETE'])
     def record_modify(kind,ident):
         if kind not in KINDS: raise ValueError('未知 kind')
@@ -145,9 +172,37 @@ def create_app(config=None):
     @app.get('/api/v1/status')
     def status():
         repository.read()
-        return jsonify(database={'connected':True,'engine':'sqlite-test' if repository.db.sqlite else 'mysql'},model={'configured':False,'available':False},speech={'configured':False,'available':False},attachments={'backend':attachment_storage.backend,'configured':True})
+        return jsonify(database={'connected':True,'engine':'sqlite-test' if repository.db.sqlite else 'mysql'},model={'configured':vision.configured,'available':vision.configured},speech={'configured':False,'available':False},attachments={'backend':attachment_storage.backend,'configured':True})
     @app.post('/api/v1/recognize')
-    def recognize(): return jsonify(ok=False,configured=False,error='图片识别模型尚未配置；请手动录入'),503
+    def recognize():
+        if not vision.configured: return jsonify(ok=False,configured=False,error='图片理解模型尚未配置；图片和说明仍保留，可使用手动记录'),503
+        if not vision_lock.acquire(blocking=False): return error('AI 正在处理另一条记录，请稍后再试',429)
+        try: return recognize_input()
+        finally: vision_lock.release()
+    def recognize_input():
+        value=body();note=value.get('note','');correction=value.get('correction','');photo=value.get('photo');day=value.get('date')
+        from datetime import date
+        if not isinstance(day,str): raise ValueError('请选择记录日期')
+        try: date.fromisoformat(day)
+        except ValueError: raise ValueError('记录日期无效')
+        if not isinstance(note,str) or len(note)>4000 or not isinstance(correction,str) or len(correction)>2000: raise ValueError('说明过长或格式无效')
+        previous=value.get('previousDrafts',[])
+        if not isinstance(previous,list) or len(previous)>6 or len(dumps_safe(previous))>30000: raise ValueError('草稿无效')
+        if not photo and not note.strip() and not correction.strip(): raise ValueError('请先上传图片或写一句说明')
+        image=None
+        if photo:
+            if not isinstance(photo,str) or not re.fullmatch(r'attachments/[a-zA-Z0-9._-]+',photo) or '..' in photo: raise ValueError('图片必须来自私人附件')
+            ident=photo.split('/',1)[1]
+            with repository.db.transaction() as c: row=repository.db.execute(c,'SELECT id FROM attachments WHERE id=%s AND user_id=1',(ident,)).fetchone()
+            if not row: raise Missing('附件不存在')
+            raw=attachment_storage.read(ident)
+            if len(raw)>20*1024*1024: raise ValueError('图片超过20MB')
+            image=image_data(raw)
+        try:
+            result=vision.recognize(note=note,image=image,day=day,correction=correction,previous=previous)
+            return jsonify(ok=True,**clean_drafts(result,day,note+('\n补充更正：'+correction if correction else ''),photo))
+        except RecognitionError as exc: return error(str(exc),502)
+
     @app.post('/api/v1/speech/transcriptions')
     def speech_transcription():
         return jsonify(ok=False,configured=False,error='语音识别 API 尚未配置；请使用文字输入'),503

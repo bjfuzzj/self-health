@@ -5,3 +5,7 @@
 .fields>div{min-width:0}input,select{min-width:0;max-width:100%}
 
 .voice-actions{display:flex;gap:12px;margin-top:10px}.voice-actions [hidden]{display:none}.voice-status{min-height:24px}#capture-note{min-height:110px}#capture-next{margin-top:16px}.text-entry .row{flex-wrap:wrap;gap:8px}
+
+#intake details{margin:14px 0}#intake summary{cursor:pointer;padding:12px 0;font-weight:600;min-height:44px}#intake .ai-card{background:#eef0e4;border:1px solid #d8deca;border-radius:22px;padding:20px;margin:16px 0}#intake .ai-summary{font-size:19px;line-height:1.7;white-space:pre-line;margin:14px 0}#intake .ai-question{color:#815726;font-size:16px}#intake .actions{flex-wrap:wrap}#intake #capture-error:empty{display:none}#intake #revise-panel[hidden]{display:none}#intake #capture-next{font-size:19px;min-height:58px}#intake #capture-preview img{max-height:220px;object-fit:contain}#intake .error{white-space:pre-line}
+
+#intake .ai-card [data-detail]{display:block;margin-top:10px;padding:8px 0;min-height:44px}

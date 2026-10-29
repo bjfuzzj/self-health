@@ -1,10 +1,10 @@
 # 康记 · WorkBuddy 个人健康记录助手
 
-新增：手机 H5 与 MySQL 云端版，支持 WorkBuddy 和 H5 共用云端档案。默认本地安装方式仍保持独立；云端部署、迁移和验收边界见 [部署说明](cloud/DEPLOYMENT.md)。H5 演示数据与真实档案隔离，未配置模型时使用手动录入。
+新增：手机 H5 与 MySQL 云端版，支持 WorkBuddy 和 H5 共用云端档案。默认本地安装方式仍保持独立；云端部署、迁移和验收边界见 [部署说明](cloud/DEPLOYMENT.md)。H5 演示数据与真实档案隔离，H5 支持“图片与说明 → AI 确认卡 → 确认保存”；自动整理需单独配置图片理解 API，未配置时使用手动录入。
 
 [![跨平台测试](https://github.com/bjfuzzj/self-health/actions/workflows/test.yml/badge.svg)](https://github.com/bjfuzzj/self-health/actions/workflows/test.yml)
 
-把饮食照片、运动描述和体脂秤截图发给 WorkBuddy，形成可纠错、可备份的个人健康记录。支持 Windows 和 macOS 的运行入口；不需要单独购买或配置模型 API。
+把饮食照片、运动描述和体脂秤截图发给 WorkBuddy，形成可纠错、可备份的个人健康记录。支持 Windows 和 macOS 的运行入口；使用 WorkBuddy 录入时不需要另配模型 API；独立 H5 的自动整理需要服务端配置图片理解 API。
 
 每次安装只管理一个人。每位使用者用自己的 WorkBuddy 账号连接自己的电脑。日常录入不要求本地面板服务一直开着，但电脑和 WorkBuddy 必须在线；看图表时再启动面板。
 
@@ -63,7 +63,7 @@ py -3 server.py
 
 ## 能力和边界
 
-本项目提供工具、记录规则与面板；图片理解和对话由 WorkBuddy 承担。相同照片在不同模型下可能得到不同估算。记录文件默认在本机，发给 WorkBuddy 的图片、语音与消息仍按其服务机制处理，详见 [隐私说明](docs/隐私说明.md)。
+本项目提供工具、记录规则与面板；WorkBuddy 入口的图片理解和对话由 WorkBuddy 承担；H5 自动整理由服务端配置的模型承担。相同照片在不同模型下可能得到不同估算。记录文件默认在本机，发给 WorkBuddy 的图片、语音与消息仍按其服务机制处理，详见 [隐私说明](docs/隐私说明.md)。
 
 默认“仅记录”，不自动设置饮食目标。出生日期、性别等可不填；不足以计算的指标显示缺失。适合记录与回顾，不替代诊疗，不自动调整药物或为所有老人套用同一套减脂计划。
 

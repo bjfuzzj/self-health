@@ -9,6 +9,9 @@ class LocalStorage:
     def __init__(self,directory,webroot):
         self.directory=Path(directory).resolve()
         if self.directory.is_relative_to(Path(webroot).resolve()): raise ValueError('附件目录必须位于 Web 根目录外')
+    def read(self,ident):
+        if "/" in ident or "\\" in ident or ".." in ident: raise ValueError("附件 ID 无效")
+        with (self.directory/ident).open("rb") as handle: return handle.read(20*1024*1024+1)
     def put(self,ident,raw,mime):
         self.directory.mkdir(parents=True,exist_ok=True,mode=0o700)
         target=self.directory/ident
@@ -39,6 +42,14 @@ class OSSStorage:
             if not 200<=result.status<300: raise OSError('OSS 上传失败')
         except ValueError: raise
         except Exception: raise OSError('OSS 上传失败') from None
+    def read(self,ident):
+        try:
+            if self.bucket.get_bucket_acl().acl!='private': raise ValueError('OSS Bucket 已不是 private，拒绝读取')
+            response=self.bucket.get_object(self.key(ident))
+            try: return response.read(20*1024*1024+1)
+            finally: response.close()
+        except ValueError: raise
+        except Exception: raise OSError('附件读取失败') from None
     def signed_url(self,ident):
         try:
             if self.bucket.get_bucket_acl().acl!='private': raise ValueError('OSS Bucket 已不是 private，拒绝签名')

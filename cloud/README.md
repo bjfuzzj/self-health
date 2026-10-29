@@ -52,3 +52,16 @@ Trends returns `from`, `to`, `revision`, `records` (the five original filtered r
 前端录音交互已预留：服务可用时申请麦克风权限，最长60秒、最大6MB，multipart `file` 上传到上述接口，成功响应约定为 `{ "ok": true, "text": "转写内容" }`。文字追加到说明，用户可编辑并确认保存；转写失败可重试或取消，原始录音仅在当前页面内存中。后续供应商适配必须验证格式、大小、时限、错误响应与鉴权，再启用 `available`。此交互的模拟测试不代表真实供应商或微信设备验收。
 
 演示空间不上传录音，用户选图仅用于当前预览、不保存到演示记录；内置虚构示例与用户上传图片区分。语音服务未配置时可以使用手机输入法的语音输入。
+
+
+## AI 图片与说明整理
+
+H5 主流程无需选择类型：输入图片或说明，AI 返回待确认卡；自然语言修改会重新整理，必要字段缺失时补问。详细表单在卡片“查看 / 修改详细数据”中，提交此表单只更新待确认草稿，不写数据库。另保留“手动记录”备用入口。
+
+设置服务端 `HEALTH_MODEL_BASE_URL`、`HEALTH_MODEL_API_KEY`、`HEALTH_MODEL_NAME` 后启用 OpenAI-compatible Chat Completions 适配，BASE_URL 是包含 `/v1` 等前缀的 API 根地址，必须 HTTPS。适配发送 text/image_url 内容块、JSON mode 和 max_tokens；上游必须同时支持这些能力。参考 [OpenAI 图片理解格式](https://developers.openai.com/api/docs/guides/images-vision?api-mode=chat)。其他供应商若格式不同，应新增适配，不能仅填入任意地址后声称联通。
+
+`POST /api/v1/recognize` JSON：`{photo?:"attachments/<id>", note:"说明", date:"YYYY-MM-DD", correction?:"修改意见", previousDrafts?:[]}`。输入照片仅接受当前用户已有附件，不接受外部URL；服务器从私有存储读取并缩放、重编码为JPEG，去除EXIF后发送给配置的模型。照片和说明将发送至所配置模型供应商。模型消息仅含本次输入、修改意见和待确认草稿，不附带完整档案和历史记录，密钥只用于服务端鉴权；健康记录不会因识别而写入。最多6条白名单草稿，未确定数字留空，餐食营养标记估算。接口返回 `{ok:true,drafts:[{kind,payload,questions}],message}`；配置缺失503、上游错误502、并行整理忙429。35秒上游超时，禁止携带密钥重定向；单进程同一时间仅处理一次识别，限制2GB主机图片解码峰值。
+
+`POST /api/v1/records/batch`：`{drafts:[{kind,payload}],expectedRevision,requestId}`。只有点击确认后调用；1–6条同事务、一次版本递增，任一记录无效全部回滚。重复相同请求返回原回执，过期版本409。新同日活动合并保留其他字段，体测按日期/来源/时段处理；同一批重复活动身份会拒绝。保存失败保留冻结请求重试，防止未收到回执后修改内容导致重复记录；版本冲突须读取最新数据、重新整理并核对。
+
+配置状态只表示适配已配置，不代表真实模型识别准确率或供应商验收通过。未配置时保留输入，允许手动录入；演示空间仅内置虚构示例，不对真实上传图片生成假识别结果。真实供应商联调、费用观察和微信真机验收尚需配置后完成。
