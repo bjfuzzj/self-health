@@ -1,5 +1,7 @@
 # VITALS · WorkBuddy 个人健康记录助手
 
+新增：手机 H5 与 MySQL 云端版，支持 WorkBuddy 和 H5 共用云端档案。默认本地安装方式仍保持独立；云端部署、迁移和验收边界见 [部署说明](cloud/DEPLOYMENT.md)。H5 演示数据与真实档案隔离，未配置模型时使用手动录入。
+
 [![跨平台测试](https://github.com/bjfuzzj/self-health/actions/workflows/test.yml/badge.svg)](https://github.com/bjfuzzj/self-health/actions/workflows/test.yml)
 
 把饮食照片、运动描述和体脂秤截图发给 WorkBuddy，形成可纠错、可备份的个人健康记录。支持 Windows 和 macOS 的运行入口；不需要单独购买或配置模型 API。

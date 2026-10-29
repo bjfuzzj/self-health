@@ -24,6 +24,38 @@ class CLITests(unittest.TestCase):
         self.assertEqual(p.returncode == 0, ok, p.stdout + p.stderr)
         return p
 
+    def test_unknown_meal_nutrients_stay_unknown(self):
+        meal = {"date":"2026-10-29","slot":"lunch","items":[
+            {"name":"rice","kcal":100,"proteinG":2}, {"name":"soup","kcal":50}]}
+        first = json.loads(self.run_cli("tools/log.py","record","--kind","meal","--file","-",payload=meal).stdout)
+        self.assertEqual(first['record']['totals'], {'kcal':150})
+        legacy = self.run_cli("tools/log.py","meal","--date","2026-10-29","--slot","dinner",
+                              "--item","rice|100|100|2|||", "--item","soup|200|50||||")
+        data = json.loads((self.directory/'health-data.json').read_text())
+        recorded = data['meals'][-1]
+        self.assertEqual(recorded['totals'], {'kcal':150})
+        self.assertNotIn('fatG',recorded['items'][0])
+        self.assertNotIn('proteinG',recorded['items'][1])
+        self.assertIn('未知',legacy.stdout)
+        self.assertNotIn('蛋白 0',legacy.stdout)
+
+    def test_explicit_zero_nutrients_and_full_legacy_meals_preserved(self):
+        from records import normalize
+        record = normalize('meal',{'date':'2026-10-29','slot':'lunch','items':[
+            {'name':'water','kcal':0,'proteinG':0,'fatG':0,'carbG':0,'fiberG':0}]})
+        self.assertEqual(record['totals'],{'kcal':0,'proteinG':0,'fatG':0,'carbG':0,'fiberG':0})
+        self.run_cli('tools/log.py','meal','--slot','lunch','--item','rice|100|120|3|1|24|2')
+        data = json.loads((self.directory/'health-data.json').read_text())
+        self.assertEqual(data['meals'][-1]['totals'],{'kcal':120,'proteinG':3,'fatG':1,'carbG':24,'fiberG':2})
+
+    def test_meal_null_is_unknown_and_nonfinite_is_rejected(self):
+        from records import normalize
+        value = {'date':'2026-10-29','slot':'lunch','items':[{'name':'rice','kcal':100,'proteinG':None}]}
+        self.assertEqual(normalize('meal',value)['totals'], {'kcal':100})
+        for invalid in (float('nan'),float('inf'),-1,True):
+            value['items'][0]['proteinG'] = invalid
+            with self.assertRaises(ValueError): normalize('meal',value)
+
     def test_record_duplicate_update_delete_and_photo(self):
         photo = Path(self.tmp.name) / "meal.png"
         photo.write_bytes(b"test photo fixture")

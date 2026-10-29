@@ -3,6 +3,7 @@ import copy
 from datetime import datetime
 import hashlib
 import json
+import math
 from pathlib import Path
 import uuid
 
@@ -43,10 +44,11 @@ def normalize(kind, record):
             if not isinstance(item, dict) or not item.get("name"):
                 raise ValueError("食物条目需要 name")
             for key in NUTRIENTS:
-                value = item.get(key, 0)
-                if type(value) not in (int, float) or value < 0:
-                    raise ValueError("食物营养必须是非负数字")
-        r["totals"] = {k: round(sum(i.get(k, 0) for i in r["items"]), 1) for k in NUTRIENTS}
+                value = item.get(key)
+                if value is not None and (type(value) not in (int, float) or not math.isfinite(value) or value < 0):
+                    raise ValueError("食物营养必须是非负有限数字或留空")
+        r["totals"] = {k: round(sum(i[k] for i in r["items"]), 1) for k in NUTRIENTS
+                       if all(i.get(k) is not None for i in r["items"])}
         r.setdefault("title", " + ".join(i["name"] for i in r["items"]))
         r.setdefault("confidence", "estimated")
         if r["confidence"] not in ("estimated", "measured"):
@@ -76,6 +78,8 @@ def read_payload(path):
 
 
 def attach(store, path):
+    if hasattr(store, "upload_image"):
+        return store.upload_image(path)
     original = Path(path)
     raw = original.read_bytes()
     if len(raw) > 20 * 1024 * 1024:

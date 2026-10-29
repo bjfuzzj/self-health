@@ -36,6 +36,7 @@ python3 tools/log.py show
 
 import argparse
 import json
+import math
 import os
 import shutil
 import sys
@@ -43,9 +44,9 @@ from datetime import date, datetime, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-from storage import Store, now_iso
+from storage import create_store, now_iso
 from records import KINDS, execute
-STORE = Store()
+STORE = create_store()
 DATA_FILE = str(STORE.path)
 
 MET = {
@@ -75,8 +76,7 @@ def now_iso() -> str:
 
 
 def load() -> dict:
-    with open(DATA_FILE, encoding="utf-8") as f:
-        return json.load(f)
+    return STORE.read()
 
 
 def save(data: dict) -> None:
@@ -283,25 +283,28 @@ def cmd_profile(a):
 def cmd_meal(a):
     d = load()
     d.setdefault("meals", [])
-    items, tk, tp, tf, tc, tfb = [], 0.0, 0.0, 0.0, 0.0, 0.0
+    items = []
+    nutrients = ("kcal", "proteinG", "fatG", "carbG", "fiberG")
+    totals = {key: 0.0 for key in nutrients}
+    complete = set(nutrients)
     for spec in a.item or []:
         parts = [p.strip() for p in spec.split("|")]
         if len(parts) != 7:
             sys.exit("条目格式应为 名称|克数|热量|蛋白|脂肪|碳水|纤维，收到：%s" % spec)
-        name = parts[0]
-        gram = parts[1] if len(parts) > 1 else ""
-        num = [float(x) if x else 0.0 for x in parts[2:6]] + [0.0] * (4 - len(parts[2:6]))
-        k, p, f, c = num[0], num[1], num[2], num[3]
-        fiber = float(parts[6]) if len(parts) > 6 and parts[6] else 0.0
-        items.append({
-            "name": name, "amount": ("%s g" % gram) if gram else "",
-            "kcal": round(k), "proteinG": p, "fatG": f, "carbG": c, "fiberG": fiber,
-        })
-        tk += k
-        tp += p
-        tf += f
-        tc += c
-        tfb += fiber
+        name, gram = parts[:2]
+        item = {"name": name, "amount": ("%s g" % gram) if gram else ""}
+        for key, text in zip(nutrients, parts[2:]):
+            if not text:
+                complete.discard(key)
+                continue
+            value = float(text)
+            if not math.isfinite(value) or value < 0:
+                raise ValueError("食物营养必须是非负有限数字或留空")
+            item[key] = round(value) if key == "kcal" else value
+            totals[key] += value
+        items.append(item)
+    totals = {key: round(value) if key == "kcal" else round(value, 1)
+              for key, value in totals.items() if key in complete}
     if not items:
         sys.exit("至少一个 --item")
     slot = a.slot or ("lunch" if datetime.now().hour < 15 else "dinner")
@@ -314,16 +317,18 @@ def cmd_meal(a):
         "slot": slot,
         "title": a.title or " + ".join(i["name"] for i in items),
         "items": items,
-        "totals": {"kcal": round(tk), "proteinG": round(tp, 1), "fatG": round(tf, 1),
-                   "carbG": round(tc, 1), "fiberG": round(tfb, 1)},
+        "totals": totals,
         "confidence": "measured" if a.measured else "estimated",
         "source": "conversation",
         "photo": a.photo,
         "note": a.note or "",
     })
     save(d)
-    print("已记录 %s：%d kcal · 蛋白 %.0f g · 脂肪 %.0f g · 碳水 %.0f g" % (
-        d["meals"][-1]["title"], tk, tp, tf, tc))
+    labels = (("kcal", "热量", "kcal"), ("proteinG", "蛋白", "g"),
+              ("fatG", "脂肪", "g"), ("carbG", "碳水", "g"))
+    summary = " · ".join(("%s %.0f %s" % (label, totals[key], unit)) if key in totals
+                         else label + " 未知" for key, label, unit in labels)
+    print("已记录 %s：%s" % (d["meals"][-1]["title"], summary))
 
 
 def cmd_workout(a):
@@ -562,7 +567,7 @@ def main():
             parser.add_argument("--date")
 
     args = ap.parse_args()
-    if not os.path.exists(DATA_FILE):
+    if not getattr(STORE, "remote", False) and not os.path.exists(DATA_FILE):
         sys.exit("找不到数据文件：%s" % DATA_FILE)
     try:
         with STORE.lock():

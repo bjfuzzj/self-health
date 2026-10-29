@@ -3,6 +3,7 @@
 /.workbuddy/
 /.env
 /.env.*
+!cloud/.env.example
 /dist/
 __pycache__/
 *.py[cod]

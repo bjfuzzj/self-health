@@ -214,3 +214,15 @@ class Store:
             for old in files[:-self.max_backups]:
                 old.unlink()
             return result
+
+
+def create_store(directory=None):
+    """Explicit cloud mode has no automatic local fallback."""
+    mode = os.environ.get('VITALS_STORAGE_MODE', 'local')
+    if mode == 'cloud':
+        from remote_store import RemoteStore
+        return RemoteStore(directory=directory,
+                           allow_loopback_http=os.environ.get('VITALS_CLOUD_ALLOW_LOOPBACK_HTTP') == '1')
+    if mode != 'local':
+        raise ValueError('VITALS_STORAGE_MODE 应为 local/cloud')
+    return Store(directory)

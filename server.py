@@ -10,7 +10,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
-from storage import Store, ConflictError, now_iso
+from storage import create_store, ConflictError, now_iso
 
 ROOT = Path(__file__).resolve().parent
 MAX_BODY = 8 * 1024 * 1024
@@ -98,8 +98,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def create_server(port, store=None):
+    store = store or create_store()
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    server.store = store or Store()
+    server.store = store
     server.csrf_token = secrets.token_urlsafe(32)
     server.allowed_hosts = {"127.0.0.1:%d" % server.server_port, "localhost:%d" % server.server_port}
     server.allowed_origins = {"http://" + host for host in server.allowed_hosts}
@@ -113,7 +114,7 @@ def main():
     args = parser.parse_args()
     if not 0 <= args.port <= 65506:
         parser.error("端口范围为 0..65506")
-    store = Store()
+    store = create_store()
     try:
         store.initialize()
     except (OSError, ValueError) as exc:
@@ -130,7 +131,8 @@ def main():
     if httpd is None:
         parser.exit(1, "找不到可用端口\n")
     url = "http://127.0.0.1:%d/" % httpd.server_port
-    print("VITALS 面板：%s\n数据文件：%s\n停止：Ctrl+C" % (url, store.path), flush=True)
+    source = "云端（不读取本地数据文件）" if getattr(store, "remote", False) else str(store.path)
+    print("VITALS 面板：%s\n数据来源：%s\n停止：Ctrl+C" % (url, source), flush=True)
     if not args.no_open:
         import webbrowser
         threading.Timer(.5, lambda: webbrowser.open(url)).start()
