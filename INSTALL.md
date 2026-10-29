@@ -4,7 +4,7 @@
 
 使用用户提供的仓库地址。先读取本文件，再下载源码。Git 可用时克隆到一个不存在的新目录；没有 Git 时可从该仓库下载源码 ZIP 并解压。不猜测仓库所有者或分支，不执行来历不明的远程脚本。
 
-若目录已存在，先检查是不是已有 VITALS 安装。已有 data/health-data.json 时绝不重置、覆盖或切换到演示数据。更新按 docs/维护与备份.md 执行。
+若目录已存在，先检查是不是已有 康记 安装。已有 data/health-data.json 时绝不重置、覆盖或切换到演示数据。更新按 docs/维护与备份.md 执行。
 
 把解压后的实际项目根目录加入桌面 WorkBuddy 工作空间；根目录须包含 server.py、CODEBUDDY.md 和 .codebuddy/skills/health-record/SKILL.md。不要把源码上一级目录或 ZIP 当项目。
 
@@ -53,7 +53,7 @@ PY tools/log.py profile --name "用户提供的称呼" --goal record_only
 
 ## 6. 手机使用
 
-在桌面 WorkBuddy 开启移动连接，手机使用该使用者自己的同一账号，连接这台在线电脑，进入 VITALS 项目。电脑需联网并允许后台运行；锁屏运行按 WorkBuddy 官方设置处理。
+在桌面 WorkBuddy 开启移动连接，手机使用该使用者自己的同一账号，连接这台在线电脑，进入 康记 项目。电脑需联网并允许后台运行；锁屏运行按 WorkBuddy 官方设置处理。
 
 参考：[官方多端协同](https://www.codebuddy.cn/docs/workbuddyapp/features/Multidevice)。
 

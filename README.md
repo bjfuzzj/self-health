@@ -1,4 +1,4 @@
-# VITALS · WorkBuddy 个人健康记录助手
+# 康记 · WorkBuddy 个人健康记录助手
 
 新增：手机 H5 与 MySQL 云端版，支持 WorkBuddy 和 H5 共用云端档案。默认本地安装方式仍保持独立；云端部署、迁移和验收边界见 [部署说明](cloud/DEPLOYMENT.md)。H5 演示数据与真实档案隔离，未配置模型时使用手动录入。
 
@@ -12,13 +12,13 @@
 
 将下面这段话直接发送给桌面端 WorkBuddy：
 
-> 请安装这个 VITALS 健康记录项目：https://github.com/bjfuzzj/self-health 。先阅读仓库 INSTALL.md，再下载到独立目录，不覆盖已有安装或个人数据。检查 Python 环境，执行幂等初始化和 doctor，把该目录作为 WorkBuddy 项目，读取 CODEBUDDY.md 并启用 health-record 项目技能。默认仅记录，不替我设置减脂目标。完成后告诉我实际安装路径、检查结果，以及手机端该进入哪个项目。暂时不要写入测试健康记录。
+> 请安装这个 康记 健康记录项目：https://github.com/bjfuzzj/self-health 。先阅读仓库 INSTALL.md，再下载到独立目录，不覆盖已有安装或个人数据。检查 Python 环境，执行幂等初始化和 doctor，把该目录作为 WorkBuddy 项目，读取 CODEBUDDY.md 并启用 health-record 项目技能。默认仅记录，不替我设置减脂目标。完成后告诉我实际安装路径、检查结果，以及手机端该进入哪个项目。暂时不要写入测试健康记录。
 
 GitHub 下载、Python 检查和操作权限可能需要用户配合；这是一套助手执行流程，不是 WorkBuddy 官方承诺的任意 GitHub 一键安装功能。安装失败时见 [安装说明](INSTALL.md)。
 
 ## 日常怎么用
 
-在手机 WorkBuddy 中连接自己的电脑，进入 VITALS 项目对话。可以说：
+在手机 WorkBuddy 中连接自己的电脑，进入 康记 项目对话。可以说：
 
 - 发一张饭菜照片：“这是今天午饭，我吃了大约一半。”
 - “昨天下午散步 30 分钟。”

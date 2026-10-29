@@ -1,4 +1,4 @@
-# VITALS 项目规则
+# 康记 项目规则
 
 这是单人、Windows/macOS 的本地健康记录项目。用户可以直接发送饭菜照片、体脂秤截图和运动描述。处理记录前，读取 `.codebuddy/skills/health-record/SKILL.md`，通过本项目 tools/log.py 落盘，保存成功再反馈。换新对话仍查询本机档案，不依赖上一段聊天。
 
