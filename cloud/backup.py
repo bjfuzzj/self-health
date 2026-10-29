@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 import json
 import os
+import tempfile
 from pathlib import Path
 from . import create_app, ROOT
 from storage import validate
@@ -15,11 +16,16 @@ def main():
     data = create_app().extensions['health_repository'].read()
     validate(data)
     name = 'health-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '-r' + str(data['meta']['revision']) + '.json'
-    fd = os.open(directory/name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, 'w', encoding='utf-8') as handle:
-        json.dump(data, handle, ensure_ascii=False, indent=2, allow_nan=False)
-        handle.flush()
-        os.fsync(handle.fileno())
+    fd, temporary = tempfile.mkstemp(prefix='.health-backup-', dir=directory)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as handle:
+            json.dump(data, handle, ensure_ascii=False, indent=2, allow_nan=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, directory/name)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
     for path in sorted(directory.glob('health-*.json'), key=lambda p: p.stat().st_mtime_ns)[:-14]:
         path.unlink()
     print(json.dumps({'ok': True, 'revision': data['meta']['revision'], 'backup': name}))

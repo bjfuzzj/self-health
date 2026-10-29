@@ -8,7 +8,12 @@ class Database:
         if self.sqlite:
             conn=sqlite3.connect(self.config['SQLITE_PATH'],timeout=30,isolation_level=None); conn.row_factory=sqlite3.Row; return conn
         import pymysql
-        return pymysql.connect(host=self.config['DB_HOST'],port=int(self.config['DB_PORT']),user=self.config['DB_USER'],password=self.config['DB_PASSWORD'],database=self.config['DB_NAME'],charset='utf8mb4',autocommit=False,cursorclass=pymysql.cursors.DictCursor,connect_timeout=8)
+        conn=pymysql.connect(host=self.config['DB_HOST'],port=int(self.config['DB_PORT']),user=self.config['DB_USER'],password=self.config['DB_PASSWORD'],database=self.config['DB_NAME'],charset='utf8mb4',autocommit=False,cursorclass=pymysql.cursors.DictCursor,connect_timeout=8)
+        try:
+            cur=conn.cursor(); cur.execute('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ'); cur.close(); conn.commit()
+        except BaseException:
+            conn.close(); raise
+        return conn
     def execute(self,conn,sql,args=()):
         cur=conn.cursor(); cur.execute(sql.replace('%s','?') if self.sqlite else sql,args); return cur
     @contextmanager

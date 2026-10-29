@@ -35,6 +35,9 @@ class MySQLSmoke(unittest.TestCase):
         if self.db.sqlite: raise RuntimeError('MySQL required')
         self.db.migrate()
         with self.db.transaction(True) as c:
+            isolation=self.db.execute(c,"SHOW SESSION VARIABLES LIKE 'transaction_isolation'").fetchone()
+            if isolation is None: isolation=self.db.execute(c,"SHOW SESSION VARIABLES LIKE 'tx_isolation'").fetchone()
+            self.assertIsNotNone(isolation); self.assertEqual(isolation['Value'].upper(),'REPEATABLE-READ')
             for table in ('snapshots','receipts','changelog','records','profiles','attachments','users'):
                 self.db.execute(c,'DELETE FROM '+table)
         self.password=secrets.token_urlsafe(24); self.repo.initialize('owner',self.password)

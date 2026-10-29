@@ -25,7 +25,10 @@ def configure(args):
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     fd, temporary = tempfile.mkstemp(prefix='.cloud-', dir=path.parent)
     try:
-        os.fchmod(fd, 0o600)
+        if hasattr(os, 'fchmod'):
+            os.fchmod(fd, 0o600)
+        else:
+            os.chmod(temporary, 0o600)
         config = {'url':args.url, 'token':token}
         if args.connect_ip:
             config['connect_ip'] = args.connect_ip

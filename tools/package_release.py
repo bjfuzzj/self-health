@@ -24,8 +24,10 @@ FILES = (
     "cloud/__init__.py", "cloud/db.py", "cloud/repository.py", "cloud/manage.py", "cloud/wsgi.py",
     "cloud/attachments.py", "cloud/smoke.py", "cloud/requirements.txt", "cloud/requirements-oss.txt",
     "cloud/backup.py",
+    "cloud/metrics.py", "tests/test_cloud_metrics.py",
     "cloud/.env.example", "cloud/README.md", "cloud/CLIENT.md",
     "cloud/DEPLOYMENT.md", "cloud/vitals-health.service.example",
+    "cloud/vitals-health-backup.service.example", "cloud/vitals-health-backup.timer.example",
     "tests/test_cloud_api.py", "tests/test_remote_client.py", "tests/test_migration.py", "tests/test_h5_frontend.cjs",
     "tests/test_cloud_attachments.py", "tests/test_remote_integration.py",
 )

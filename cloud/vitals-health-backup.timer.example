@@ -1,0 +1,11 @@
+[Unit]
+Description=VITALS daily backup schedule
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Shanghai
+RandomizedDelaySec=300
+Persistent=true
+Unit=vitals-health-backup.service
+
+[Install]
+WantedBy=timers.target

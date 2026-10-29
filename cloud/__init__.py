@@ -9,6 +9,7 @@ from collections import defaultdict, deque
 from flask import Flask, request, session, jsonify, send_from_directory, redirect, g
 from werkzeug.exceptions import HTTPException
 from .db import Database
+from .metrics import daily_summary, trend_summary
 from .attachments import create_storage
 from .repository import Repository, Conflict, Missing, digest
 from records import KINDS
@@ -90,6 +91,10 @@ def create_app(config=None):
     def snapshot():
         if not g.bearer: return error('此接口仅允许工作令牌',403)
         return jsonify(repository.snapshot(body()))
+    @app.get('/api/v1/summary')
+    def summary(): return jsonify(daily_summary(repository.read(),request.args.get('date')))
+    @app.get('/api/v1/trends')
+    def trends(): return jsonify(trend_summary(repository.read(),request.args.get('from'),request.args.get('to')))
     @app.get('/api/v1/version')
     def version(): return jsonify(revision=repository.read()['meta']['revision'])
     @app.get('/api/v1/records')

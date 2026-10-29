@@ -170,7 +170,10 @@ class RemoteClientTests(unittest.TestCase):
             self.assertEqual(load_config()['token'], 'env-secret')
         path.chmod(0o644)
         with patch.dict(os.environ, {'VITALS_CLOUD_CONFIG':str(path)}, clear=True):
-            with self.assertRaises(ValueError): load_config()
+            if os.name != 'nt':
+                with self.assertRaises(ValueError): load_config()
+            else:
+                self.assertEqual(load_config()['token'], 'file-secret')
 
 
 if __name__ == '__main__': unittest.main()

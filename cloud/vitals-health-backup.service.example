@@ -1,0 +1,15 @@
+[Unit]
+Description=VITALS private daily JSON backup
+After=mysqld.service
+
+[Service]
+Type=oneshot
+User=vitals
+Group=vitals
+WorkingDirectory=/www/wwwroot/health.baihejie.cn
+EnvironmentFile=/www/server/vitals/private/health.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/www/wwwroot/health.baihejie.cn/.venv/bin/python -m cloud.backup
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
