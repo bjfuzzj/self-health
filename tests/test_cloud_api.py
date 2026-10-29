@@ -17,6 +17,18 @@ class CloudAPI(unittest.TestCase):
     def get(self): return self.c.get('/api/v1/data',headers=self.headers).json
     def write(self,payload,request_id='one',revision=0):
         return self.c.post('/api/v1/records',json={'kind':'activity','payload':payload,'expectedRevision':revision,'requestId':request_id},headers=self.headers)
+    def test_speech_placeholder_is_private_and_never_changes_records(self):
+        self.assertEqual(self.c.post('/api/v1/speech/transcriptions').status_code,401)
+        before=self.get()
+        status=self.c.get('/api/v1/status',headers=self.headers)
+        self.assertEqual(status.json['speech'],{'configured':False,'available':False})
+        result=self.c.post('/api/v1/speech/transcriptions',headers=self.headers)
+        self.assertEqual(result.status_code,503)
+        self.assertFalse(result.json['configured'])
+        self.assertEqual(self.get(),before)
+        login=self.c.post('/api/v1/auth/login',json={'username':'owner','password':'correct-password'})
+        self.assertEqual(self.c.post('/api/v1/speech/transcriptions').status_code,403)
+        self.assertEqual(self.c.post('/api/v1/speech/transcriptions',headers={'X-CSRF-Token':login.json['csrfToken']}).status_code,503)
     def test_auth_csrf_and_revocation(self):
         self.assertEqual(self.c.get('/api/v1/data').status_code,401)
         self.assertEqual(self.c.post('/api/v1/auth/login',json={'username':'owner','password':'wrong'}).status_code,401)

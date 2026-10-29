@@ -45,3 +45,38 @@ test('history date and category filters retain older dates without UTC conversio
 
 test('browser history date/type filters and honest range summaries', {skip:!process.env.H5_REGRESSION_URL}, async()=>{const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');const b=await chromium.launch({headless:true,...(process.env.H5_BROWSER_PATH?{executablePath:process.env.H5_BROWSER_PATH}:{})});const p=await b.newPage({viewport:{width:390,height:844}});await p.goto(process.env.H5_REGRESSION_URL);const d=demoSeed();d.meals.push({id:'old-meal',date:'2024-12-31',slot:'lunch',title:'历史午餐',items:[{name:'旧餐',kcal:100}],totals:{kcal:100},confidence:'estimated'});d.meals.push({id:'old-unknown',date:'2024-12-31',slot:'dinner',title:'热量未记录晚餐',items:[{name:'旧晚餐'}],totals:{}});d.bodyMetrics.push({id:'old-body',date:'2024-12-31',weightKg:75,bodyFatPct:22,measureMode:'fasting'},{id:'old-bed',date:'2024-12-31',weightKg:76,bodyFatPct:23,measureMode:'bedtime'});d.workouts.push({id:'old-workout',date:'2024-12-31',type:'walk',typeLabel:'历史快走',durationMin:25});await p.evaluate(d=>localStorage.setItem('vitals.h5.demo.v1',JSON.stringify(d)),d);await p.reload();await p.locator('[data-tab=today]').click();assert.equal(await p.locator('[data-edit="old-meal"]').count(),0);await p.locator('#history-date').fill('2024-12-31');await p.locator('#history-kind').selectOption('meal');assert.equal(await p.locator('[data-edit="old-meal"]').count(),1);assert.equal(await p.locator('[data-edit="old-body"]').count(),0);assert.ok((await p.locator('.stats').innerText()).includes('75'));assert.ok((await p.locator('.stats').innerText()).includes('100'));await p.locator('[data-history-mode=all]').click();assert.equal(await p.locator('.stats').count(),0);assert.equal(await p.locator('[data-edit="old-meal"]').count(),1);await p.locator('#history-kind').selectOption('body');assert.equal(await p.locator('[data-edit="old-meal"]').count(),0);assert.equal(await p.locator('[data-edit="old-bed"]').count(),1);await p.locator('[data-tab=trends]').click();await p.locator('[data-range=custom]').click();await p.locator('#range-from').fill('2024-12-31');await p.locator('#range-to').fill('2024-12-31');await p.locator('#apply-range').click();const text=await p.locator('#main').innerText();assert.ok(text.includes('体脂率的轨迹'));assert.ok(text.includes('100'));assert.ok(text.includes('25'));assert.ok(text.includes('存在热量缺失'));assert.equal(await p.locator('.card').filter({hasText:'体脂率的轨迹'}).locator('svg polyline').count(),2);assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);console.log('PASS: older fixture date/type/all-history filters, correct selected-day metrics, all-history no daily totals, separate bodyfat modes, known meal kcal + missing warning, workout minutes, mobile no overflow');await b.close()
 });
+
+test('voice transcript appends to existing typed explanation without replacing it',()=>{
+ const {appendTranscript}=require('../h5/voice.js');
+ assert.equal(appendTranscript('米饭半碗',' 汤没喝 '),'米饭半碗\n汤没喝');
+ assert.equal(appendTranscript('原说明','  '),'原说明');
+ assert.equal(appendTranscript('','走路三十分钟'),'走路三十分钟');
+});
+
+test('recording releases microphone; failed transcription retries without losing description',async()=>{
+ const {mount,appendTranscript}=require('../h5/voice.js');
+ const nodes=Object.fromEntries(['.voice-start','.voice-cancel','.voice-retry','.voice-status'].map(k=>[k,{hidden:false,disabled:false,textContent:'',click(){if(!this.disabled)return this.onclick()}}]));
+ const element={innerHTML:'',querySelector:k=>nodes[k]};let stopped=0,attempt=0,note='米饭半碗';
+ globalThis.isSecureContext=true;Object.defineProperty(globalThis,'navigator',{configurable:true,value:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){stopped++}}]})}}});
+ globalThis.MediaRecorder=class{static isTypeSupported(){return true}constructor(){this.state='inactive';this.mimeType='audio/webm'}start(){this.state='recording'}stop(){this.state='inactive';this.ondataavailable?.({data:new Blob(['audio'])});this.onstop?.()}};
+ const dispose=mount({element,mode:'real',api:async path=>{if(path==='/status')return {speech:{available:true}};attempt++;if(attempt===1)throw new Error('网络中断');return {text:'汤没喝'}},onText:text=>note=appendTranscript(note,text)});
+ await nodes['.voice-start'].click();assert.ok(nodes['.voice-start'].textContent.includes('结束'));
+ await nodes['.voice-start'].click();await new Promise(r=>setImmediate(r));
+ assert.ok(stopped>=1);assert.equal(note,'米饭半碗');assert.equal(nodes['.voice-retry'].hidden,false);
+ await nodes['.voice-retry'].click();assert.equal(note,'米饭半碗\n汤没喝');assert.equal(attempt,2);
+ dispose();delete globalThis.MediaRecorder;delete globalThis.navigator;delete globalThis.isSecureContext;
+});
+test('cancel while microphone permission is pending releases late stream without recording',async()=>{
+ const {mount}=require('../h5/voice.js');
+ const nodes=Object.fromEntries(['.voice-start','.voice-cancel','.voice-retry','.voice-status'].map(k=>[k,{click(){return this.onclick()}}]));let resolveStream,stopped=0,started=0;
+ globalThis.isSecureContext=true;Object.defineProperty(globalThis,'navigator',{configurable:true,value:{mediaDevices:{getUserMedia:()=>new Promise(r=>resolveStream=r)}}});
+ globalThis.MediaRecorder=class{constructor(){started++}};
+ const dispose=mount({element:{querySelector:k=>nodes[k]},mode:'real',api:async()=>({speech:{available:true}}),onText(){assert.fail('cancelled audio must not append')}});
+ const pending=nodes['.voice-start'].click();await new Promise(r=>setImmediate(r));nodes['.voice-cancel'].click();resolveStream({getTracks:()=>[{stop(){stopped++}}]});await pending;assert.equal(stopped,1);assert.equal(started,0);dispose();delete globalThis.MediaRecorder;delete globalThis.navigator;delete globalThis.isSecureContext;
+});
+test('unconfigured speech never requests microphone permission',async()=>{
+ const {mount}=require('../h5/voice.js');const nodes=Object.fromEntries(['.voice-start','.voice-cancel','.voice-retry','.voice-status'].map(k=>[k,{}]));let requested=0;
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{mediaDevices:{getUserMedia:async()=>requested++}}});
+ const dispose=mount({element:{querySelector:k=>nodes[k]},mode:'real',api:async()=>({speech:{configured:false,available:false}}),onText(){assert.fail()}});
+ await nodes['.voice-start'].onclick();assert.equal(requested,0);assert.match(nodes['.voice-status'].textContent,/尚未配置/);dispose();delete globalThis.navigator;
+});

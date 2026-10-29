@@ -20,7 +20,7 @@ FILES = (
     "docs/superpowers/plans/2026-10-26-public-release.md",
     "tests/test_core.py", "tests/test_cli.py", "tests/test_http.py", "tests/test_package.py", "tests/frontend.test.cjs",
     "remote_store.py", "tools/cloud_client.py", "tools/prepare_migration.py",
-    "h5/index.html", "h5/styles.css", "h5/app.js",
+    "h5/index.html", "h5/styles.css", "h5/app.js", "h5/voice.js",
     "cloud/__init__.py", "cloud/db.py", "cloud/repository.py", "cloud/manage.py", "cloud/wsgi.py",
     "cloud/attachments.py", "cloud/smoke.py", "cloud/requirements.txt", "cloud/requirements-oss.txt",
     "cloud/backup.py",
@@ -29,7 +29,7 @@ FILES = (
     "cloud/DEPLOYMENT.md", "cloud/vitals-health.service.example",
     "cloud/vitals-health-backup.service.example", "cloud/vitals-health-backup.timer.example",
     "tests/test_cloud_api.py", "tests/test_remote_client.py", "tests/test_migration.py", "tests/test_h5_frontend.cjs",
-    "tests/test_cloud_attachments.py", "tests/test_remote_integration.py",
+    "tests/test_h5_composer.cjs", "tests/test_cloud_attachments.py", "tests/test_remote_integration.py",
 )
 
 

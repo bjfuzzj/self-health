@@ -41,3 +41,14 @@ Summary returns `date`, `body.latestByMode` (`fasting`, `bedtime`, `unspecified`
 Meal nutrient fields (`kcal`, `proteinG`, `fatG`, `carbG`, `fiberG`) each return `{knownSum, knownCount, missingCount, complete}`. Only finite nonnegative numbers contribute; zero is known. `knownSum` is null when nothing is known, and a partial known sum remains explicitly incomplete. Counts refer to individual food entries; a legacy meal without food items contributes one aggregate entry using its recorded `totals` (or one unknown entry). With food items present, reported totals never fill missing item quantities. `nutritionEntryCount`, `count`, `hasEstimates`, `estimatedCount`, and `unclassifiedConfidenceCount` expose coverage and original meal confidence without reclassifying unknown confidence as measured. Supplements apply the same nutrient counters per supplement record. Workouts return count and the same known/missing statistics for `durationMin` and `kcal`; no duration or expenditure is estimated.
 
 Trends returns `from`, `to`, `revision`, `records` (the five original filtered record collections), `days` (summaries for dates having at least one actual record), and `body[mode].weightKg/bodyFatPct` point arrays. Points retain actual `date`, `ts`, `id`, `value`; missing metric values and missing dates create no points. Every actual measurement is retained, including multiple sources on a date. No interpolation, prior-date carry-forward, or inferred fasting measurements occur. MySQL connections explicitly set session `REPEATABLE READ`, independent of the server global default; no global server configuration is changed.
+
+
+## 图片与语音说明
+
+同一条记录先选择图片和补充说明，再核对表单并保存。附件上传失败保留文件及说明，记录保存失败保留已上传附件标识；不重复上传同一份已成功附件。未提交草稿仅保留在当前页面内存，刷新会丢失，离开页面会提示。
+
+语音 API 由使用者后续提供，本版本没有接入真实转写服务。`GET /api/v1/status` 的 `speech` 返回 `configured:false, available:false`；`POST /api/v1/speech/transcriptions` 经过现有认证与 CSRF 检查后返回 503，不存储录音或修改健康数据。配置环境变量不会自动启用该接口。
+
+前端录音交互已预留：服务可用时申请麦克风权限，最长60秒、最大6MB，multipart `file` 上传到上述接口，成功响应约定为 `{ "ok": true, "text": "转写内容" }`。文字追加到说明，用户可编辑并确认保存；转写失败可重试或取消，原始录音仅在当前页面内存中。后续供应商适配必须验证格式、大小、时限、错误响应与鉴权，再启用 `available`。此交互的模拟测试不代表真实供应商或微信设备验收。
+
+演示空间不上传录音，用户选图仅用于当前预览、不保存到演示记录；内置虚构示例与用户上传图片区分。语音服务未配置时可以使用手机输入法的语音输入。

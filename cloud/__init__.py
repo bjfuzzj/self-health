@@ -145,9 +145,12 @@ def create_app(config=None):
     @app.get('/api/v1/status')
     def status():
         repository.read()
-        return jsonify(database={'connected':True,'engine':'sqlite-test' if repository.db.sqlite else 'mysql'},model={'configured':False,'available':False},attachments={'backend':attachment_storage.backend,'configured':True})
+        return jsonify(database={'connected':True,'engine':'sqlite-test' if repository.db.sqlite else 'mysql'},model={'configured':False,'available':False},speech={'configured':False,'available':False},attachments={'backend':attachment_storage.backend,'configured':True})
     @app.post('/api/v1/recognize')
     def recognize(): return jsonify(ok=False,configured=False,error='图片识别模型尚未配置；请手动录入'),503
+    @app.post('/api/v1/speech/transcriptions')
+    def speech_transcription():
+        return jsonify(ok=False,configured=False,error='语音识别 API 尚未配置；请使用文字输入'),503
     @app.post('/api/v1/attachments')
     def attachment_upload():
         file=request.files.get('file')
