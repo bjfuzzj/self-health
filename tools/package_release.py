@@ -24,7 +24,7 @@ FILES = (
     "cloud/__init__.py", "cloud/db.py", "cloud/repository.py", "cloud/manage.py", "cloud/wsgi.py",
     "cloud/attachments.py", "cloud/smoke.py", "cloud/requirements.txt", "cloud/requirements-oss.txt",
     "cloud/backup.py",
-    "cloud/recognition.py", "tests/test_cloud_recognition.py", "tests/test_h5_intake.cjs", "cloud/metrics.py", "tests/test_cloud_metrics.py",
+    "cloud/recognition.py", "tests/test_cloud_recognition.py", "tests/test_h5_intake.cjs", "tests/test_h5_inline.cjs", "cloud/metrics.py", "tests/test_cloud_metrics.py",
     "cloud/.env.example", "cloud/README.md", "cloud/CLIENT.md",
     "cloud/DEPLOYMENT.md", "cloud/vitals-health.service.example",
     "cloud/vitals-health-backup.service.example", "cloud/vitals-health-backup.timer.example",
