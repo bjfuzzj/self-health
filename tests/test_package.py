@@ -30,3 +30,16 @@ class PackageTests(unittest.TestCase):
             d = json.loads((unpacked / "data/health-data.json").read_text(encoding="utf-8"))
             self.assertEqual(d["meals"], [])
             self.assertEqual(d["profile"]["goal"]["type"], "record_only")
+
+    def test_h5_asset_versions_follow_content(self):
+        from tools.version_h5 import stamp
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp);(folder/'h5').mkdir()
+            for name in ('app.js','intake.js','voice.js','styles.css'):(folder/'h5'/name).write_text('original')
+            html=''.join('<script src="/h5/'+name+'"></script>' for name in ('app.js','intake.js','voice.js'))+'<link href="/h5/styles.css">'
+            (folder/'h5/index.html').write_text(html)
+            self.assertTrue(stamp(folder))
+            self.assertFalse(stamp(folder,check=True))
+            before=(folder/'h5/index.html').read_text();(folder/'h5/app.js').write_text('new version')
+            with self.assertRaises(ValueError):stamp(folder,check=True)
+            self.assertTrue(stamp(folder));self.assertNotEqual(before,(folder/'h5/index.html').read_text())

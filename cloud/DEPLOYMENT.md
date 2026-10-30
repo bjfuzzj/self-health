@@ -42,3 +42,19 @@
 ## 验收边界
 
 自动测试、真实 MySQL 验收、HTTPS 浏览器验收与 iPhone/Android 微信实机验收分别记录。模拟浏览器不能替代真实微信验收；可选 OSS 未配置时应报告本地私有存储，不能声称图片已上传 OSS。
+
+## H5 更新与缓存
+
+每次修改 H5 JS/CSS 后先执行 `python tools/version_h5.py`，把更新的 `h5/index.html` 与资源一起发布。脚本把资源内容的 SHA256 前12位写入 URL 的 `?v=`，`tools/package_release.py` 会检查版本是否与文件内容一致，防止遗漏。
+
+宝塔独立站点的 HTTPS `server` 层为 HTML 和 H5 静态资源设置：
+
+```nginx
+add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+```
+
+如果某个 `location` 自己设置了 `add_header`，需注意 Nginx 的继承规则，并用实际响应验证。API 原有的 `no-store` 保持。
+
+修改后先用服务器安装的 Nginx 执行 `-t`，通过后 reload，再分别读取 `/` 和带版本号的 JS/CSS 响应头。已打开的旧页面不会自动更换正在执行的脚本；不要为强制更新而清除健康数据或自动刷新未提交表单。需要一次性更新时打开带新查询参数的首页链接，使 HTML 和带内容版本的资源重新加载。
+
+浏览器缓存回归：设置 `PLAYWRIGHT_MODULE` 为本机 Playwright 模块路径后执行 `node --test tests/test_h5_cache.cjs`。测试先缓存旧版脚本，验证不带资源版本时重现旧界面，再验证带版本的文档可进入首页录入并直接触发文件选择器。

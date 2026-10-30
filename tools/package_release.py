@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import sys
 import zipfile
+from version_h5 import stamp
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = (
@@ -13,7 +14,7 @@ FILES = (
     "server.py", "storage.py", "records.py", "index.html", "启动.command", "启动.bat",
     "assets/app.js", "assets/app.css", "assets/charts.js",
     "templates/empty-data.json", "templates/demo-data.json",
-    "tools/log.py", "tools/setup.py", "tools/make_demo.py", "tools/package_release.py",
+    "tools/log.py", "tools/setup.py", "tools/make_demo.py", "tools/package_release.py", "tools/version_h5.py",
     ".codebuddy/skills/health-record/SKILL.md", ".github/workflows/test.yml",
     "docs/数据字典.md", "docs/对话录入.md", "docs/维护与备份.md", "docs/隐私说明.md", "docs/验证记录.md",
     "docs/superpowers/specs/2026-10-26-public-release-design.md",
@@ -24,7 +25,7 @@ FILES = (
     "cloud/__init__.py", "cloud/db.py", "cloud/repository.py", "cloud/manage.py", "cloud/wsgi.py",
     "cloud/attachments.py", "cloud/smoke.py", "cloud/requirements.txt", "cloud/requirements-oss.txt",
     "cloud/backup.py",
-    "cloud/recognition.py", "tests/test_cloud_recognition.py", "tests/test_h5_intake.cjs", "tests/test_h5_inline.cjs", "cloud/metrics.py", "tests/test_cloud_metrics.py",
+    "cloud/recognition.py", "tests/test_cloud_recognition.py", "tests/test_h5_intake.cjs", "tests/test_h5_inline.cjs", "tests/test_h5_cache.cjs", "cloud/metrics.py", "tests/test_cloud_metrics.py",
     "cloud/.env.example", "cloud/README.md", "cloud/CLIENT.md",
     "cloud/DEPLOYMENT.md", "cloud/vitals-health.service.example",
     "cloud/vitals-health-backup.service.example", "cloud/vitals-health-backup.timer.example",
@@ -37,6 +38,8 @@ def main():
     parser = argparse.ArgumentParser(description="打包 VITALS 干净源码")
     parser.add_argument("--output", type=Path, default=ROOT / "dist/vitals-source.zip")
     args = parser.parse_args()
+    try: stamp(ROOT,check=True)
+    except ValueError as exc: parser.exit(1,str(exc)+'\n')
     missing = [name for name in FILES if not (ROOT / name).is_file()]
     if missing:
         parser.exit(1, "发行文件缺失：" + ", ".join(missing) + "\n")
